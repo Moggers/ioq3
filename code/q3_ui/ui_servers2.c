@@ -76,6 +76,7 @@ MULTIPLAYER MENU (SERVER BROWSER)
 #define ID_CONNECT			22
 #define ID_REMOVE			23
 #define ID_PUNKBUSTER 24
+#define ID_HIDE_BOTS		25
 
 #define GR_LOGO				30
 #define GR_LETTERS			31
@@ -209,6 +210,7 @@ typedef struct {
 	menulist_s			sortkey;
 	menuradiobutton_s	showfull;
 	menuradiobutton_s	showempty;
+	menuradiobutton_s	hidebots;
 
 	menulist_s			list;
 	menubitmap_s		mappic;
@@ -257,6 +259,7 @@ static int				g_gametype;
 static int				g_sortkey;
 static int				g_emptyservers;
 static int				g_fullservers;
+static int				g_hidebots;
 
 
 /*
@@ -437,6 +440,7 @@ static void ArenaServers_UpdateMenu( void ) {
 			g_arenaservers.sortkey.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.showempty.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.showfull.generic.flags	&= ~QMF_GRAYED;
+			g_arenaservers.hidebots.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.list.generic.flags		&= ~QMF_GRAYED;
 			g_arenaservers.refresh.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.go.generic.flags			&= ~QMF_GRAYED;
@@ -464,6 +468,7 @@ static void ArenaServers_UpdateMenu( void ) {
 			g_arenaservers.sortkey.generic.flags	|= QMF_GRAYED;
 			g_arenaservers.showempty.generic.flags	|= QMF_GRAYED;
 			g_arenaservers.showfull.generic.flags	|= QMF_GRAYED;
+			g_arenaservers.hidebots.generic.flags	|= QMF_GRAYED;
 			g_arenaservers.list.generic.flags		|= QMF_GRAYED;
 			g_arenaservers.refresh.generic.flags	|= QMF_GRAYED;
 			g_arenaservers.go.generic.flags			|= QMF_GRAYED;
@@ -491,6 +496,7 @@ static void ArenaServers_UpdateMenu( void ) {
 			g_arenaservers.sortkey.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.showempty.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.showfull.generic.flags	&= ~QMF_GRAYED;
+			g_arenaservers.hidebots.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.list.generic.flags		|= QMF_GRAYED;
 			g_arenaservers.refresh.generic.flags	&= ~QMF_GRAYED;
 			g_arenaservers.go.generic.flags			|= QMF_GRAYED;
@@ -683,7 +689,13 @@ static void ArenaServers_Insert( char* adrstr, char* info, int pingtime )
 	Q_CleanStr( servernodeptr->mapname );
 	Q_strupr( servernodeptr->mapname );
 
-	servernodeptr->numclients = atoi( Info_ValueForKey( info, "clients") );
+	if( g_hidebots ) {
+		servernodeptr->numclients = atoi( Info_ValueForKey( info, "g_humanplayers") );
+	}
+	else {
+		servernodeptr->numclients = atoi( Info_ValueForKey( info, "clients") );
+	}
+
 	servernodeptr->maxclients = atoi( Info_ValueForKey( info, "sv_maxclients") );
 	servernodeptr->pingtime   = pingtime;
 	servernodeptr->minPing    = atoi( Info_ValueForKey( info, "minPing") );
@@ -1258,6 +1270,12 @@ static void ArenaServers_Event( void* ptr, int event ) {
 		ArenaServers_UpdateMenu();
 		break;
 
+	case ID_HIDE_BOTS:
+		trap_Cvar_SetValue( "ui_browserHideBots", g_arenaservers.hidebots.curvalue );
+		g_hidebots = g_arenaservers.hidebots.curvalue;
+		ArenaServers_UpdateMenu();
+		break;
+
 	case ID_LIST:
 		if( event == QM_GOTFOCUS ) {
 			ArenaServers_UpdatePicture();
@@ -1431,6 +1449,15 @@ static void ArenaServers_MenuInit( void ) {
 	g_arenaservers.showempty.generic.x			= 320;
 	g_arenaservers.showempty.generic.y			= y;
 
+	y += SMALLCHAR_HEIGHT;
+	g_arenaservers.hidebots.generic.type		= MTYPE_RADIOBUTTON;
+	g_arenaservers.hidebots.generic.name		= "Hide Bots:";
+	g_arenaservers.hidebots.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	g_arenaservers.hidebots.generic.callback	= ArenaServers_Event;
+	g_arenaservers.hidebots.generic.id			= ID_HIDE_BOTS;
+	g_arenaservers.hidebots.generic.x			= 320;
+	g_arenaservers.hidebots.generic.y			= y;
+
 	y += 3 * SMALLCHAR_HEIGHT;
 	g_arenaservers.list.generic.type			= MTYPE_SCROLLLIST;
 	g_arenaservers.list.generic.flags			= QMF_HIGHLIGHT_IF_FOCUS;
@@ -1589,6 +1616,7 @@ static void ArenaServers_MenuInit( void ) {
 	Menu_AddItem( &g_arenaservers.menu, (void*) &g_arenaservers.sortkey );
 	Menu_AddItem( &g_arenaservers.menu, (void*) &g_arenaservers.showfull);
 	Menu_AddItem( &g_arenaservers.menu, (void*) &g_arenaservers.showempty );
+	Menu_AddItem( &g_arenaservers.menu, (void*) &g_arenaservers.hidebots );
 
 	Menu_AddItem( &g_arenaservers.menu, (void*) &g_arenaservers.mappic );
 	Menu_AddItem( &g_arenaservers.menu, (void*) &g_arenaservers.status );
@@ -1623,6 +1651,9 @@ static void ArenaServers_MenuInit( void ) {
 
 	g_emptyservers = Com_Clamp( 0, 1, ui_browserShowEmpty.integer );
 	g_arenaservers.showempty.curvalue = g_emptyservers;
+
+	g_hidebots = Com_Clamp( 0, 1, ui_browserHideBots.integer );
+	g_arenaservers.hidebots.curvalue = g_hidebots;
 	
 	g_arenaservers.punkbuster.curvalue = Com_Clamp( 0, 1, trap_Cvar_VariableValue( "cl_punkbuster" ) );
 
