@@ -95,6 +95,7 @@ MULTIPLAYER MENU (SERVER BROWSER)
 #define SORT_CLIENTS		2
 #define SORT_GAME			3
 #define SORT_PING			4
+#define SORT_CLIENTS_FILLED	5
 
 #define GAMES_ALL			0
 #define GAMES_FFA			1
@@ -128,6 +129,7 @@ static const char *sortkey_items[] = {
 	"Open Player Spots",
 	"Game Type",
 	"Ping Time",
+	"Filled Player Spots",
 	NULL
 };
 
@@ -327,6 +329,15 @@ static int QDECL ArenaServers_Compare( const void *arg1, const void *arg2 ) {
 			return -1;
 		}
 		if( t1->pingtime > t2->pingtime ) {
+			return 1;
+		}
+		return Q_stricmp( t1->hostname, t2->hostname );
+
+	case SORT_CLIENTS_FILLED:
+		if( t1->numclients > t2->numclients ) {
+			return -1;
+		}
+		if( t1->numclients < t2->numclients ) {
 			return 1;
 		}
 		return Q_stricmp( t1->hostname, t2->hostname );
